@@ -17,7 +17,6 @@
     local Description = "Roblox UI library inspired by Linoria"
 ]]--
 
-
 local cloneref = (cloneref or clonereference or function(i)
         return i
     end)
@@ -31,7 +30,7 @@ local function Tween(obj, props, t)
 end
 local Connections = {}
 local function TrackConnection(signal, callback)
-TrackConnection(    local connection = signal, callback)
+    local connection = signal:Connect(callback)
     table.insert(Connections, connection)
     return connection
 end
@@ -2088,4 +2087,3 @@ return setmetatable(
             return Library:CreateWindow(...)
         end}
 )
-
