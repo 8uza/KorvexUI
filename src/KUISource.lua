@@ -1,3 +1,23 @@
+--[[
+                                                                                        
+     ▄▄   ▄▄▄                                                    ▄▄    ▄▄   ▄▄▄▄▄▄  
+     ██  ██▀                                                     ██    ██   ▀▀██▀▀  
+     ██▄██      ▄████▄    ██▄████  ██▄  ▄██   ▄████▄   ▀██  ██▀  ██    ██     ██    
+     █████     ██▀  ▀██   ██▀       ██  ██   ██▄▄▄▄██    ████    ██    ██     ██    
+     ██  ██▄   ██    ██   ██        ▀█▄▄█▀   ██▀▀▀▀▀▀    ▄██▄    ██    ██     ██    
+     ██   ██▄  ▀██▄▄██▀   ██         ████    ▀██▄▄▄▄█   ▄█▀▀█▄   ▀██▄▄██▀   ▄▄██▄▄  
+     ▀▀    ▀▀    ▀▀▀▀     ▀▀          ▀▀       ▀▀▀▀▀   ▀▀▀  ▀▀▀    ▀▀▀▀     ▀▀▀▀▀▀  
+                                                                                    
+                                                                                    
+        
+    local Version = "1.0.2"
+    local minified = false
+    local Creator = "starstruck"
+    local Discord = "n1otev" or "niotev"
+    local Description = "Roblox UI library inspired by Linoria"
+]]--
+
+
 local cloneref = cloneref or clonereference or function(a)
         return a
     end
