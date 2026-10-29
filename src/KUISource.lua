@@ -10,7 +10,7 @@
                                                                                     
                                                                                     
         
-    local Version = "1.0.2"
+    local Version = "1.0.4"
     local minified = false
     local Creator = "starstruck"
     local Discord = "n1otev" or "niotev"
@@ -24,7 +24,16 @@ local cloneref = (cloneref or clonereference or function(i)
 local TS = cloneref(game:GetService("TweenService"))
 local UIS = cloneref(game:GetService("UserInputService"))
 local function Tween(obj, props, t)
+    if not obj or not obj.Parent then
+        return
+    end
     TS:Create(obj, TweenInfo.new(t or 0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+end
+local Connections = {}
+local function TrackConnection(signal, callback)
+TrackConnection(    local connection = signal, callback)
+    table.insert(Connections, connection)
+    return connection
 end
 local Players = cloneref(game:GetService("Players"))
 local CoreGui = cloneref(game:GetService("CoreGui"))
@@ -112,12 +121,19 @@ local function Create(c, p)
 end
 function Library:CreateWindow(opts)
     opts = opts or {}
+    self.Unloaded = false
     local title = opts.Title or "KorvexUI"
     local size = opts.Size or UDim2.fromOffset(550, 600)
     local center = opts.Center
     local autoShow = opts.AutoShow
     -- auto-unload previous KorvexUI instances
     if _G.KorvexUIInstances then
+        for _, connection in ipairs(Connections) do
+            if connection and connection.Connected then
+                pcall(function() connection:Disconnect() end)
+            end
+        end
+        table.clear(Connections)
         for _, g in ipairs(_G.KorvexUIInstances) do
             pcall(
                 function()
@@ -159,20 +175,20 @@ function Library:CreateWindow(opts)
     ReopenBtn.Visible = false
     ReopenBtn.Parent = ScreenGui
     local reopenDragging, reopenStart, reopenPos
-    ReopenBtn.InputBegan:Connect(function(i)
+TrackConnection(    ReopenBtn.InputBegan, function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 then
             reopenDragging = true
             reopenStart = i.Position
             reopenPos = ReopenBtn.Position
         end
     end)
-    UIS.InputChanged:Connect(function(i)
+TrackConnection(    UIS.InputChanged, function(i)
         if reopenDragging and i.UserInputType == Enum.UserInputType.MouseMovement then
             local d = i.Position - reopenStart
             ReopenBtn.Position = UDim2.new(reopenPos.X.Scale, reopenPos.X.Offset + d.X, reopenPos.Y.Scale, reopenPos.Y.Offset + d.Y)
         end
     end)
-    UIS.InputEnded:Connect(function(i)
+TrackConnection(    UIS.InputEnded, function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 then
             reopenDragging = false
         end
@@ -188,7 +204,7 @@ function Library:CreateWindow(opts)
     MinBtn.BorderSizePixel = 0
     MinBtn.Parent = TitleBar
     Library:RegisterAccent(MinBtn)
-    MinBtn.MouseButton1Click:Connect(
+TrackConnection(    MinBtn.MouseButton1Click, 
         function()
             Tween(
                 Main,
@@ -209,7 +225,7 @@ function Library:CreateWindow(opts)
             )
         end
     )
-    ReopenBtn.MouseButton1Click:Connect(
+TrackConnection(    ReopenBtn.MouseButton1Click, 
         function()
             Tween(ReopenBtn, {Size = UDim2.fromOffset(0, 0)}, 0.15)
             task.delay(
@@ -251,28 +267,28 @@ function Library:CreateWindow(opts)
         resizeStart = i.Position
         startSize = Main.Size
     end
-    rightBar.InputBegan:Connect(
+TrackConnection(    rightBar.InputBegan, 
         function(i)
             if i.UserInputType == Enum.UserInputType.MouseButton1 then
                 startResize("right", i)
             end
         end
     )
-    bottomBar.InputBegan:Connect(
+TrackConnection(    bottomBar.InputBegan, 
         function(i)
             if i.UserInputType == Enum.UserInputType.MouseButton1 then
                 startResize("bottom", i)
             end
         end
     )
-    cornerBar.InputBegan:Connect(
+TrackConnection(    cornerBar.InputBegan, 
         function(i)
             if i.UserInputType == Enum.UserInputType.MouseButton1 then
                 startResize("corner", i)
             end
         end
     )
-    UIS.InputChanged:Connect(
+TrackConnection(    UIS.InputChanged, 
         function(i)
             if resizing and i.UserInputType == Enum.UserInputType.MouseMovement then
                 local d = i.Position - resizeStart
@@ -285,7 +301,7 @@ function Library:CreateWindow(opts)
             end
         end
     )
-    UIS.InputEnded:Connect(
+TrackConnection(    UIS.InputEnded, 
         function(i)
             if i.UserInputType == Enum.UserInputType.MouseButton1 then
                 resizing = false
@@ -335,7 +351,7 @@ function Library:CreateWindow(opts)
     self.Tabs = {}
     self.ActiveTab = nil
     local dragging, ds, sp
-    TitleBar.InputBegan:Connect(
+TrackConnection(    TitleBar.InputBegan, 
         function(i)
             if i.UserInputType == Enum.UserInputType.MouseButton1 then
                 dragging = true
@@ -344,7 +360,7 @@ function Library:CreateWindow(opts)
             end
         end
     )
-    UIS.InputChanged:Connect(
+TrackConnection(    UIS.InputChanged, 
         function(i)
             if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
                 local d = i.Position - ds
@@ -352,14 +368,14 @@ function Library:CreateWindow(opts)
             end
         end
     )
-    UIS.InputEnded:Connect(
+TrackConnection(    UIS.InputEnded, 
         function(i)
             if i.UserInputType == Enum.UserInputType.MouseButton1 then
                 dragging = false
             end
         end
     )
-    UIS.InputBegan:Connect(
+TrackConnection(    UIS.InputBegan, 
         function(i, gp)
             if gp then
                 return
@@ -396,7 +412,8 @@ function Library:CreateWindow(opts)
     if not autoShow then
         Main.Visible = false
     end
-    local function mkGroup(tab, gname)
+    local function mkGroup(tab, gname, targetParent)
+        targetParent = targetParent or tab.Frame
         local gb =
             Create(
             "Frame",
@@ -405,9 +422,9 @@ function Library:CreateWindow(opts)
                 BackgroundColor3 = Color3.fromRGB(22, 22, 22),
                 BorderColor3 = Library.Theme.OutlineColor,
                 BorderSizePixel = 1,
-                Size = UDim2.new(1, -12, 0, 0),
+                Size = UDim2.new(1, -4, 0, 0),
                 AutomaticSize = Enum.AutomaticSize.Y,
-                Parent = tab.Frame
+                Parent = targetParent
             }
         )
         Create(
@@ -476,11 +493,26 @@ function Library:CreateWindow(opts)
             )
             Library:RegisterAccent(check)
             local state = info.Default or false
-            local t = {Value = state, Id = id}
+            local t = {Value = state, Id = id, _Listeners = {}}
+            function t:_Subscribe(callback)
+                table.insert(self._Listeners, callback)
+                return function()
+                    for i, listener in ipairs(self._Listeners) do
+                        if listener == callback then
+                            table.remove(self._Listeners, i)
+                            break
+                        end
+                    end
+                end
+            end
             Library.Toggles[id] = t
             local function set(v)
+                v = not not v
                 state = v
                 t.Value = v
+                for _, listener in ipairs(t._Listeners) do
+                    task.spawn(listener, v)
+                end
                 if v then
                     check.Visible = true
                     Tween(check, {Size = UDim2.fromOffset(10, 10)}, 0.12)
@@ -502,7 +534,7 @@ function Library:CreateWindow(opts)
             Library.ElementCount = (Library.ElementCount or 0) + 1
             t.SetValue = set
             t.Set = set
-            row.InputBegan:Connect(
+TrackConnection(            row.InputBegan, 
                 function(i)
                     if i.UserInputType == Enum.UserInputType.MouseButton1 then
                         set(not state)
@@ -524,7 +556,14 @@ function Library:CreateWindow(opts)
             info = info or {}
             local mn = info.Min or 0
             local mx = info.Max or 100
-            local def = info.Default or mn
+            local def = math.clamp(info.Default or mn, mn, mx)
+            local range = mx - mn
+            local function ratio(v)
+                if range == 0 then
+                    return 0
+                end
+                return math.clamp((v - mn) / range, 0, 1)
+            end
             local row = Create("Frame", {BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 36), Parent = gc})
             local lbl =
                 Create(
@@ -556,7 +595,7 @@ function Library:CreateWindow(opts)
                 "Frame",
                 {
                     BackgroundColor3 = Library.Theme.AccentColor,
-                    Size = UDim2.new((def - mn) / (mx - mn), 0, 1, 0),
+                    Size = UDim2.new(ratio(def), 0, 1, 0),
                     Parent = bar
                 }
             )
@@ -568,7 +607,7 @@ function Library:CreateWindow(opts)
                 v = math.clamp(v, mn, mx)
                 val = v
                 s.Value = v
-                Tween(fill, {Size = UDim2.new((v - mn) / (mx - mn), 0, 1, 0)}, 0.2)
+                Tween(fill, {Size = UDim2.new(ratio(v), 0, 1, 0)}, 0.2)
                 lbl.Text = (info.Text or id) .. ": " .. v
                 if info.Callback then
                     info.Callback(v)
@@ -578,21 +617,21 @@ function Library:CreateWindow(opts)
             s.SetValue = set
             s.Set = set
             local drag = false
-            bar.InputBegan:Connect(
+TrackConnection(            bar.InputBegan, 
                 function(i)
                     if i.UserInputType == Enum.UserInputType.MouseButton1 then
                         drag = true
                     end
                 end
             )
-            UIS.InputEnded:Connect(
+TrackConnection(            UIS.InputEnded, 
                 function(i)
                     if i.UserInputType == Enum.UserInputType.MouseButton1 then
                         drag = false
                     end
                 end
             )
-            UIS.InputChanged:Connect(
+TrackConnection(            UIS.InputChanged, 
                 function(i)
                     if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
                         local rel = (i.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X
@@ -654,7 +693,7 @@ function Library:CreateWindow(opts)
                 }
             )
             local ll = Create("UIListLayout", {Parent = lf})
-            ll:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(
+TrackConnection(            ll:GetPropertyChangedSignal("AbsoluteContentSize"), 
                 function()
                     lf.Size = UDim2.new(1, 0, 0, ll.AbsoluteContentSize.Y)
                 end
@@ -675,7 +714,7 @@ function Library:CreateWindow(opts)
                         Parent = lf
                     }
                 )
-                opt.MouseButton1Click:Connect(
+TrackConnection(                opt.MouseButton1Click, 
                     function()
                         val = v
                         dd.Value = v
@@ -687,7 +726,7 @@ function Library:CreateWindow(opts)
                     end
                 )
             end
-            sel.MouseButton1Click:Connect(
+TrackConnection(            sel.MouseButton1Click, 
                 function()
                     lf.Visible = not lf.Visible
                 end
@@ -718,7 +757,7 @@ function Library:CreateWindow(opts)
                     Parent = gc
                 }
             )
-            btn.MouseButton1Click:Connect(
+TrackConnection(            btn.MouseButton1Click, 
                 function()
                     if cb then
                         cb()
@@ -783,13 +822,13 @@ function Library:CreateWindow(opts)
             local kp = {Value = info.Default, Id = id}
             Library.Options[id] = kp
             local listening = false
-            keyBtn.MouseButton1Click:Connect(
+TrackConnection(            keyBtn.MouseButton1Click, 
                 function()
                     listening = true
                     keyBtn.Text = "..."
                 end
             )
-            UIS.InputBegan:Connect(
+TrackConnection(            UIS.InputBegan, 
                 function(i, gp)
                     if listening and i.UserInputType == Enum.UserInputType.Keyboard then
                         listening = false
@@ -837,7 +876,7 @@ function Library:CreateWindow(opts)
             )
             local inp = {Value = box.Text, Id = id}
             Library.Options[id] = inp
-            box.FocusLost:Connect(
+TrackConnection(            box.FocusLost, 
                 function()
                     inp.Value = box.Text
                     if info.Callback then
@@ -929,21 +968,21 @@ function Library:CreateWindow(opts)
             end
             local function bind(lbl, bar, fill, channel)
                 local drag = false
-                bar.InputBegan:Connect(
+TrackConnection(                bar.InputBegan, 
                     function(i)
                         if i.UserInputType == Enum.UserInputType.MouseButton1 then
                             drag = true
                         end
                     end
                 )
-                UIS.InputEnded:Connect(
+TrackConnection(                UIS.InputEnded, 
                     function(i)
                         if i.UserInputType == Enum.UserInputType.MouseButton1 then
                             drag = false
                         end
                     end
                 )
-                UIS.InputChanged:Connect(
+TrackConnection(                UIS.InputChanged, 
                     function(i)
                         if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
                             local rel = math.clamp((i.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
@@ -966,9 +1005,15 @@ function Library:CreateWindow(opts)
             bind(gL, gB, gF, "g")
             bind(bL, bB, bF, "b")
             function cp:SetValue(c)
-                r, g, b = math.floor(c.R * 255), math.floor(c.G * 255), math.floor(c.B * 255)
-                preview.BackgroundColor3 = c
-                cp.Value = c
+                assert(typeof(c) == "Color3", "ColorPicker:SetValue expects a Color3")
+                r, g, b = math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)
+                rF.Size = UDim2.new(r / 255, 0, 1, 0)
+                gF.Size = UDim2.new(g / 255, 0, 1, 0)
+                bF.Size = UDim2.new(b / 255, 0, 1, 0)
+                rL.Text = "R: " .. r
+                gL.Text = "G: " .. g
+                bL.Text = "B: " .. b
+                update()
             end
             return cp
         end
@@ -1052,7 +1097,7 @@ function Library:CreateWindow(opts)
                 }
             )
             local ll = Create("UIListLayout", {Parent = lf})
-            ll:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(
+TrackConnection(            ll:GetPropertyChangedSignal("AbsoluteContentSize"), 
                 function()
                     lf.Size = UDim2.new(1, 0, 0, ll.AbsoluteContentSize.Y)
                 end
@@ -1095,7 +1140,7 @@ function Library:CreateWindow(opts)
                                 Parent = lf
                             }
                         )
-                        opt.MouseButton1Click:Connect(
+TrackConnection(                        opt.MouseButton1Click, 
                             function()
                                 if isSel then
                                     for i, s in ipairs(selected) do
@@ -1106,27 +1151,41 @@ function Library:CreateWindow(opts)
                                 else
                                     table.insert(selected, v)
                                 end
+                                md.Value = table.clone(selected)
                                 refresh()
                                 rebuild(search.Text)
+                                if info.Callback then
+                                    info.Callback(table.clone(selected))
+                                end
                             end
                         )
                     end
                 end
             end
-            search:GetPropertyChangedSignal("Text"):Connect(
+TrackConnection(            search:GetPropertyChangedSignal("Text"), 
                 function()
                     rebuild(search.Text)
                 end
             )
             rebuild("")
-            btn.MouseButton1Click:Connect(
+TrackConnection(            btn.MouseButton1Click, 
                 function()
                     lf.Visible = not lf.Visible
                 end
             )
             function md:SetValue(t)
-                selected = t or {}
+                selected = {}
+                if type(t) == "table" then
+                    for _, value in ipairs(t) do
+                        table.insert(selected, value)
+                    end
+                end
+                md.Value = selected
                 refresh()
+                rebuild(search.Text)
+                if info.Callback then
+                    info.Callback(table.clone(selected))
+                end
             end
             return md
         end
@@ -1188,10 +1247,17 @@ function Library:CreateWindow(opts)
                 Create("UIListLayout", {Padding = UDim.new(0, 4), Parent = f})
                 local t = {Name = name, Button = btn, Frame = f, Content = f}
                 function t:AddToggle(id, info)
-                    return group.AddToggle and nil
+                    local previousContent = gc
+                    gc = f
+                    local ok, result = pcall(group.AddToggle, group, id, info)
+                    gc = previousContent
+                    if not ok then
+                        error(result)
+                    end
+                    return result
                 end
                 tabs[name] = t
-                btn.MouseButton1Click:Connect(
+TrackConnection(                btn.MouseButton1Click, 
                     function()
                         for _, tt in pairs(tabs) do
                             tt.Frame.Visible = false
@@ -1212,22 +1278,64 @@ function Library:CreateWindow(opts)
             return box
         end
         function group:AddDependencyBox()
-            local frame =
-                Create(
-                "Frame",
-                {
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 0),
-                    AutomaticSize = Enum.AutomaticSize.Y,
-                    Parent = gc
-                }
-            )
+            local frame = Create("Frame", {
+                Name = "DependencyBox",
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Parent = gc
+            })
+            local content = Create("Frame", {
+                Name = "DependencyContent",
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Parent = frame
+            })
+            Create("UIListLayout", {Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = content})
             local deps = {}
-            function frame:SetupDependencies(list)
-                deps = list or {}
+            local subscriptions = {}
+            local function evaluate()
+                local visible = true
+                for _, dependency in ipairs(deps) do
+                    local toggle = dependency.Toggle or dependency[1]
+                    local expected = dependency.Value
+                    if expected == nil then expected = true end
+                    local actual = type(toggle) == "table" and toggle.Value or toggle
+                    if actual ~= expected then
+                        visible = false
+                        break
+                    end
+                end
+                frame.Visible = visible
             end
-            frame.Visible = true
-            Create("UIListLayout", {Padding = UDim.new(0, 4), Parent = frame})
+            function frame:SetupDependencies(list)
+                for _, unsubscribe in ipairs(subscriptions) do
+                    pcall(unsubscribe)
+                end
+                subscriptions = {}
+                deps = list or {}
+                for _, dependency in ipairs(deps) do
+                    local toggle = dependency.Toggle or dependency[1]
+                    if type(toggle) == "table" and type(toggle._Subscribe) == "function" then
+                        table.insert(subscriptions, toggle:_Subscribe(evaluate))
+                    end
+                end
+                evaluate()
+            end
+            local forwarded = {"AddToggle", "AddSlider", "AddDropdown", "AddButton", "AddLabel", "AddDivider", "AddKeyPicker", "AddInput", "AddColorPicker", "AddSection", "AddMultiDropdown", "AddTabbox", "AddDependencyBox"}
+            for _, methodName in ipairs(forwarded) do
+                local method = methodName
+                frame[method] = function(_, ...)
+                    local previousContent = gc
+                    gc = content
+                    local ok, result = pcall(group[method], group, ...)
+                    gc = previousContent
+                    if not ok then error(result) end
+                    return result
+                end
+            end
+            evaluate()
             return frame
         end
         return group
@@ -1261,16 +1369,22 @@ function Library:CreateWindow(opts)
                 Parent = Content
             }
         )
-        local layout =
-            Create(
-            "UIListLayout",
-            {Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = tabFrame}
-        )
-        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(
-            function()
-                tabFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 8)
-            end
-        )
+        local layout = Create("UIListLayout", {Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = tabFrame})
+        local columns = Create("Frame", {
+            Name = "GroupboxColumns",
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, 0),
+            AutomaticSize = Enum.AutomaticSize.Y,
+            Parent = tabFrame
+        })
+        Create("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = columns})
+        local leftColumn = Create("Frame", {Name = "LeftColumn", BackgroundTransparency = 1, Size = UDim2.new(0.5, -4, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Parent = columns})
+        local rightColumn = Create("Frame", {Name = "RightColumn", BackgroundTransparency = 1, Size = UDim2.new(0.5, -4, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Parent = columns})
+        Create("UIListLayout", {Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = leftColumn})
+        Create("UIListLayout", {Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = rightColumn})
+        TrackConnection(layout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
+            tabFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 8)
+        end)
         Create(
             "UIPadding",
             {
@@ -1280,7 +1394,7 @@ function Library:CreateWindow(opts)
                 Parent = tabFrame
             }
         )
-        local tab = {Name = name, Button = tabBtn, Frame = tabFrame, Groups = {}}
+        local tab = {Name = name, Button = tabBtn, Frame = tabFrame, Groups = {}, LeftColumn = leftColumn, RightColumn = rightColumn}
         table.insert(self.Tabs, tab)
         -- keep Korvex Settings tab at the bottom
         local ks = nil
@@ -1301,7 +1415,7 @@ function Library:CreateWindow(opts)
             ks.Button.Parent = nil
             ks.Button.Parent = TabHolder
         end
-        tabBtn.MouseButton1Click:Connect(
+TrackConnection(        tabBtn.MouseButton1Click, 
             function()
                 for _, t in ipairs(self.Tabs) do
                     t.Frame.Visible = false
@@ -1314,13 +1428,13 @@ function Library:CreateWindow(opts)
             end
         )
         function tab:AddLeftGroupbox(gname)
-            return mkGroup(tab, gname)
+            return mkGroup(tab, gname, leftColumn)
         end
         function tab:AddRightGroupbox(gname)
-            return mkGroup(tab, gname)
+            return mkGroup(tab, gname, rightColumn)
         end
         function tab:AddGroupbox(gname, side)
-            return mkGroup(tab, gname)
+            return mkGroup(tab, gname, side == "Right" and rightColumn or leftColumn)
         end
         if not self.ActiveTab then
             self.ActiveTab = tab
@@ -1461,7 +1575,7 @@ function Library:CreateWindow(opts)
     function self:EnableFPSWatermark()
         local fps, frames, last = 60, 0, tick()
         self._fpsConn =
-            game:GetService("RunService").RenderStepped:Connect(
+TrackConnection(            game:GetService("RunService").RenderStepped, 
             function()
                 if self.Unloaded then
                     self._fpsConn:Disconnect()
@@ -1502,7 +1616,21 @@ function Library:CreateWindow(opts)
         end
     end
     function self:Unload()
+        if self.Unloaded then
+            return
+        end
         self.Unloaded = true
+        for _, connection in ipairs(Connections) do
+            if connection and connection.Connected then
+                pcall(function() connection:Disconnect() end)
+            end
+        end
+        table.clear(Connections)
+        local blur = game:GetService("Lighting"):FindFirstChild("KorvexBlur")
+        if blur then
+            blur:Destroy()
+        end
+        table.clear(Library.AccentElements)
         if self._fpsConn then
             pcall(
                 function()
@@ -1520,21 +1648,6 @@ function Library:CreateWindow(opts)
         end
         ScreenGui:Destroy()
     end
-    local status =
-        Create(
-        "TextLabel",
-        {
-            Text = "",
-            Font = Library.Theme.Font,
-            TextSize = 14,
-            TextColor3 = Library.Theme.FontColor,
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 20),
-            Position = UDim2.new(0, 0, 0.58, 0),
-            Visible = not key,
-            Parent = overlay
-        }
-    )
     function Library:CreateLoadingScreen(opts)
         opts = opts or {}
         local sub = opts.Subtitle or "Loading..."
@@ -1606,16 +1719,27 @@ function Library:CreateWindow(opts)
                 BackgroundTransparency = 1,
                 Size = UDim2.new(1, 0, 0, 16),
                 Visible = not key,
-                Position = UDim2.fromOffset(0, 0.9),
+                Position = UDim2.new(0, 0, 0.9, -16),
                 Parent = overlay
             }
         )
+        local status = Create("TextLabel", {
+            Text = "",
+            Font = Library.Theme.Font,
+            TextSize = 14,
+            TextColor3 = Library.Theme.FontColor,
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, 20),
+            Position = UDim2.new(0, 0, 0.58, 0),
+            Visible = not key,
+            Parent = overlay
+        })
         local keyFrame = nil
-            title.TextTransparency = 1
+        title.TextTransparency = 1
             Tween(title, {TextTransparency = 0}, 0.4)
-            local tabs = math.random(1, 6)
-            local elems = math.random(10, 35)
-            local funcs = math.random(80, 150)
+            local tabs = #self.Tabs
+            local elems = self.ElementCount or 0
+            local funcs = 0
             local steps = {
                 {name = "Loading tabs", total = tabs},
                 {name = "Loading elements", total = elems},
@@ -1676,7 +1800,7 @@ function Library:CreateWindow(opts)
                         )
                         for _, s in ipairs(steps) do
                             status.Text = s.name .. " (" .. s.total .. ")"
-                            local dur = math.random(80, 120) / 100
+                            local dur = 0.35
                             local start = progress
                             local add = s.total / totalAll
                             for t = 0, 1, 0.05 do
@@ -1703,6 +1827,9 @@ function Library:CreateWindow(opts)
                         task.delay(
                             0.4,
                             function()
+                                if Library.Unloaded or not overlay.Parent then
+                                    return
+                                end
                                 overlay:Destroy()
                                 if self.Main then
                                     self.Main.Visible = true
@@ -1816,7 +1943,7 @@ function Library:CreateWindow(opts)
                                 table.insert(self._effects, p)
                             end
                             self._effectsConn =
-                                game:GetService("RunService").RenderStepped:Connect(
+TrackConnection(                                game:GetService("RunService").RenderStepped, 
                                 function()
                                     if self.Unloaded then
                                         return
@@ -1858,8 +1985,6 @@ function Library:CreateWindow(opts)
     return self
 end
 
-function Library:UpdateBlur()
-end
 function Library:_SerializeValue(v)
     if typeof(v) == "Color3" then
         return {__type = "Color3", r = v.R, g = v.G, b = v.B}
