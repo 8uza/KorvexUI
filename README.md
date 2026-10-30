@@ -2,6 +2,8 @@
 
 KorvexUI is a Roblox UI library inspired by Linoria, built for script developers who want a clean, customizable interface. It provides windows, tabs, groupboxes, and common controls with a consistent theme.
 
+# This is still in development! Bugs will occur.
+
 ## Installation
 
 ```lua
